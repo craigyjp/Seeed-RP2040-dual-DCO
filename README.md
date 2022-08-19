@@ -1,5 +1,6 @@
 # Seeed-RP2040-dual-DCO
-A single voice dual DCO with the Seeed XIAO RP2040
+
+## A single voice dual DCO with the Seeed XIAO RP2040
 
 Carrying on the excellent work by Jan Knipper.
 
@@ -13,17 +14,19 @@ The stack has gone as it’s now a permanent 2 DCO voice. Each wave has its own 
 There is an octave select for -1/0/+1 octave adjustment. input is by Din MIDI or USBmidi as before. 
 Really a Pico could have been used, but I bought half a dozen of these modules and wanted to try to use them.
 
-Dual DCO
-Sawtooth wave 10v pp
-Pulse wave 10v pp
-PW adjust pot
-PW modulation input
-Detune DCO 2
-FM input +/-5v 
-Control input +/-5v
-Gate out 0-3.3v
-Midi input
-USB midi input
-Octave switch 32, 16 and 8' modes
-Portamento over MID,  time and on/off
-Pitchbend over MIDI 
+## Key features
+
+- Dual DCO
+- Sawtooth wave 10v pp
+- Pulse wave 10v pp
+- PW adjust pot
+- PW modulation input
+- Detune DCO 2
+- FM input +/-5v 
+- Control input +/-5v
+- Gate out 0-3.3v
+- DIN Midi input
+- USB midi input
+- Octave switch 32, 16 and 8' modes
+- Portamento over MID,  time and on/off
+- Pitchbend over MIDI 
