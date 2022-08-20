@@ -14,11 +14,13 @@
 
 #define NUM_VOICES 2
 #define MIDI_CHANNEL 1
-#define USE_ADC_CONT1         // gpio 28 (adc 2)
+//#define USE_ADC_CV           // gpio 29 (adc 3)
+#define USE_ADC_CONT1        // gpio 28 (adc 2)
 #define USE_ADC_DETUNE       // gpio 27 (adc 1)
 #define USE_ADC_FM           // gpio 26 (adc 0)
 #define USE_OCTAVE_SWITCH
 #define USE_ADC_STACK_VOICES
+
 
 #define PIN_OCT1  6
 #define PIN_OCT2  7
@@ -28,10 +30,13 @@ uint8_t OCT2 = 1;
 float OCT = 1.00f;
 float LAST_OCT = 1.00f;
 
+float calb = 1.15;
+
 uint STACK_VOICES = 2;
 float DETUNE = 0.0f, LAST_DETUNE = 0.0f;
 float FM_VALUE = 0.0f, LAST_FM = 0.0f;
 float CONT1_VALUE = 0.0f, LAST_CONT1 = 0.0f;
+float CV_VALUE = 0.0f, LAST_CV = 0.0f;
 
 // Scale factor for FM. Controls how intense the effect is at maximum input voltage.
 // Units: Hertz.
@@ -40,8 +45,7 @@ float CONT1_INTENSITY = 15.0f;
 
 const float BASE_NOTE = 440.0f;
 const uint8_t RESET_PINS[NUM_VOICES] = {3, 2};
-const uint8_t RANGE_PINS[NUM_VOICES] = {4, 29};
-const uint8_t GATE_PINS[NUM_VOICES] = {0};
+const uint8_t RANGE_PINS[NUM_VOICES] = {4, 0};
 const uint8_t VOICE_TO_PIO[NUM_VOICES] = {0, 0};
 const uint8_t VOICE_TO_SM[NUM_VOICES] = {0, 1};
 const uint16_t DIV_COUNTER = 1250;
@@ -73,6 +77,7 @@ void note_off(uint8_t note);
 void voice_task();
 void adc_task();
 void octave_task();
+void cv_task();
 long map(long x, long in_min, long in_max, long out_min, long out_max);
 
 int main() {
@@ -109,23 +114,20 @@ int main() {
     gpio_pull_up(PIN_OCT1);
     gpio_pull_up(PIN_OCT2);
 
-    // gate gpio init
-    for (int i=0; i<NUM_VOICES; i++) {
-        gpio_init(GATE_PINS[i]);
-        gpio_set_dir(GATE_PINS[i], GPIO_OUT);
-    }
-
     // adc init
-    #if defined(USE_ADC_CONT1) || defined(USE_ADC_DETUNE) || defined(USE_ADC_FM) 
+    #if defined(USE_ADC_CONT1) || defined(USE_ADC_DETUNE) || defined(USE_ADC_FM) || defined(USE_ADC_CV) 
     adc_init();
+    #ifdef USE_ADC_FM
+    adc_gpio_init(26);
+    #endif
     #ifdef USE_ADC_DETUNE
     adc_gpio_init(27);
     #endif
     #ifdef USE_ADC_CONT1
     adc_gpio_init(28);
     #endif
-    #ifdef USE_ADC_FM
-    adc_gpio_init(26);
+    #ifdef USE_ADC_CV
+    adc_gpio_init(29);
     #endif
     #endif
 
@@ -139,6 +141,9 @@ int main() {
         tud_task();
         usb_midi_task();
         serial_midi_task();
+        #if defined(USE_ADC_CV)
+        cv_task();
+        #endif
         voice_task();
         #if defined(USE_ADC_CONT1) || defined(USE_ADC_DETUNE) || defined(USE_ADC_FM)
         adc_task();
@@ -148,6 +153,15 @@ int main() {
         #endif
         led_blinking_task();
     }
+}
+
+void cv_task() {
+    uint16_t adc;
+    adc_select_input(3);
+    adc = adc_read() * calb;
+    //adc = map(adc, 0, 4095, 0, 127);
+    adc = (((adc / 16) / 4) - 4);
+    note_on(adc, 100);
 }
 
 void init_sm(PIO pio, uint sm, uint offset, uint pin) {
@@ -296,8 +310,6 @@ void note_on(uint8_t note, uint8_t velocity) {
         set_frequency(pio[VOICE_TO_PIO[voice_num]], VOICE_TO_SM[voice_num], freq);
         // amplitude adjustment
         pwm_set_chan_level(RANGE_PWM_SLICES[voice_num], pwm_gpio_to_channel(RANGE_PINS[voice_num]), (int)(DIV_COUNTER*(freq*0.00025f-1/(100*freq))));
-        // gate on
-        gpio_put(GATE_PINS[voice_num], 1);
     }
     if (portamento) {
         if (portamento_start == 0) {
@@ -314,7 +326,6 @@ void note_off(uint8_t note) {
     // gate off
     for (int i=0; i<NUM_VOICES; i++) {
         if (VOICE_NOTES[i] == note) {
-            gpio_put(GATE_PINS[i], 0);
 
             //VOICE_NOTES[i] = 0;
             VOICES[i] = 0;
@@ -326,12 +337,6 @@ void note_off(uint8_t note) {
         portamento_stop = 0;
         portamento_cur_freq = 0.0f;
     }
-    /*
-    if (portamento_start == note) {
-        portamento_stop = 0;
-        portamento_cur_freq = 0.0f;
-    }
-    */
 }
 
 uint8_t get_free_voice() {
@@ -393,8 +398,6 @@ void adc_task() {
     DETUNE = map(raw, 0, 4095, 0, 50)/1000.0f;
     #endif
 
-
-
     #ifdef USE_ADC_FM
 
     adc_select_input(0);
@@ -413,7 +416,7 @@ void adc_task() {
     adc_select_input(2);
     rawcont = adc_read();
 
-    // This input assumes a centre FM value of 2^11 = 2048, as the 
+    // This input assumes a centre control  value of 2^11 = 2048, as the 
     // ADCs are unsigned. This can be overcome in hardware with a fixed 
     // voltage offset. The range of the Pico's ADCs is 3.3V, so a fixed 
     // offset of 1.65V is needed.
