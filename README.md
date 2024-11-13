@@ -1,12 +1,12 @@
 # Seeed-RP2040-dual-DCO
 
-## A single voice dual DCO with the Seeed XIAO RP2040
+## A single voice dual DCO with the Seeed Studio XIAO RP2040
 
 Carrying on the excellent work by Jan Knipper.
 
 https://github.com/polykit/pico-dco
 
-I ported his Polykit Pico DCO to the Seeed XIAO RP2040, not much of a feat I know, but I made a single voice dual DCO with the available pins. 
+I ported his Polykit Pico DCO to the [Seeed Studio XIAO RP2040](https://www.seeedstudio.com/XIAO-RP2040-v1-0-p-5026.html), not much of a feat I know, but I made a single voice dual DCO with the available pins. 
 I modded the detune so only the second DCO actually detuned down from the first. 
 I also added the FM input and control input both +/-5v input range. Gate output 0-3.3v as before, could be level shifted if needed.
 
